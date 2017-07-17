@@ -4,11 +4,17 @@ from __future__ import print_function
 
 import os
 import sys
+
+
+def exit_fail(msg, exit_code=1):
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+
 try:
     from configparser import ConfigParser, NoSectionError, NoOptionError
 except ImportError:
     from ConfigParser import ConfigParser, NoSectionError, NoOptionError
-import requests
 import json
 
 
@@ -17,6 +23,11 @@ try:
     urllib3.disable_warnings()
 except:
     pass
+
+try:
+    import requests
+except ImportError:
+    exit_fail('Please install the python requests library, "apt-get install python-requests" on debian/ubuntu')
 
 
 class Configuration(object):
@@ -34,8 +45,7 @@ class Configuration(object):
                          os.path.expanduser('~/.ansible/openitcockpit.ini'),
                          'openitcockpit.ini'])
         if len(read) < 1:
-            print('Could not find any configuration file', file=sys.stderr)
-            sys.exit(1)
+            exit_fail('Could not find any configuration file')
         self.url = cfg.get('openitcockpit', 'url')
         self.ldap = cfg.getboolean('openitcockpit', 'ldap')
         self.master_hostname = cfg.get('openitcockpit', 'master_hostname')
@@ -46,8 +56,7 @@ class Configuration(object):
             self.username = cfg.get('openitcockpit', 'username')
             self.password = cfg.get('openitcockpit', 'password')
         except (NoSectionError, NoOptionError):
-            print("Please specify username and password in the configuration file", file=sys.stderr)
-            sys.exit(1)
+            exit_fail("Please specify username and password in the configuration file")
 
     def get_auth_data(self):
         if self.ldap:
@@ -92,27 +101,26 @@ class Inventory(object):
                                         verify=self.config.validate_certs)
 
             if login_request.status_code != 200 or login_request.json()['message'] != 'Login successful':
-                print("Login failed", file=sys.stderr)
-                sys.exit(1)
+                exit_fail('Login failed')
 
             sat_request = requests.get(self.config.url + '/distribute_module/satellites.json',
                                        cookies=login_request.cookies,
                                        verify=self.config.validate_certs)
 
+            if sat_request.status_code == 200:
+                self.groups['oitc-satellite'] = []
+                for sat_data in sat_request.json()['all_satelittes']:
+                    sat = sat_data['Satellite']
+                    self.hosts[sat['name']] = {
+                        'address': sat['address'],
+                        'ansible_host': sat['address'],
+                        'timezone': sat['timezone'],
+                        'container': sat['container'],
+                    }
+                    self.groups['oitc-satellite'].append(sat['name'])
+
         except requests.exceptions.RequestException as e:
-            print('HTTP request failed: {}'.format(str(e)), file=sys.stderr)
-            sys.exit(1)
-        if sat_request.status_code == 200:
-            self.groups['oitc-satellite'] = []
-            for sat_data in sat_request.json()['all_satelittes']:
-                sat = sat_data['Satellite']
-                self.hosts[sat['name']] = {
-                    'address': sat['address'],
-                    'ansible_host': sat['address'],
-                    'timezone': sat['timezone'],
-                    'container': sat['container'],
-                }
-                self.groups['oitc-satellite'].append(sat['name'])
+            print('Warning: Could not fetch satellite data\n{}'.format(str(e)), file=sys.stderr)
 
     def json(self):
         data = self.groups
