@@ -18,15 +18,15 @@ except ImportError:
     from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 
 try:
-    import urllib3
-    urllib3.disable_warnings()
-except:
-    pass
-
-try:
     import requests
 except ImportError:
     exit_fail('Please install the python requests library, "apt-get install python-requests" on debian/ubuntu')
+
+try:
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+except:
+    pass
 
 try:
     import argparse
