@@ -113,15 +113,21 @@ class Inventory(object):
 
             if sat_request.status_code == 200:
                 self.groups['oitc-satellite'] = []
-                for sat_data in sat_request.json()['all_satelittes']:
-                    sat = sat_data['Satellite']
-                    self.hosts[sat['name']] = {
-                        'address': sat['address'],
-                        'ansible_host': sat['address'],
-                        'timezone': sat['timezone'],
-                        'container': sat['container'],
-                    }
-                    self.groups['oitc-satellite'].append(sat['name'])
+                try:
+                    for sat_data in sat_request.json()['all_satelittes']:
+                        sat = sat_data['Satellite']
+                        self.hosts[sat['name']] = {
+                            'address': sat['address'],
+                            'ansible_host': sat['address'],
+                            'timezone': sat['timezone'],
+                            'container': sat['container'],
+                        }
+                        self.groups['openitcockpit'].append(sat['name'])
+                        self.groups['oitc-satellite'].append(sat['name'])
+                except Exception as e:
+                    print('Warning: There was an error parsing the output of the openitcockpit api\n{}'.format(str(e)))
+            else:
+                print('Warning: API did not return HTTP 200. Please check the openitcockpit server.')
 
         except requests.exceptions.RequestException as e:
             print('Warning: Could not fetch satellite data\n{}'.format(str(e)), file=sys.stderr)
