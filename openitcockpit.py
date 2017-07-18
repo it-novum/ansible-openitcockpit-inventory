@@ -4,19 +4,18 @@ from __future__ import print_function
 
 import os
 import sys
+import json
 
 
 def exit_fail(msg, exit_code=1):
     print(msg, file=sys.stderr)
-    sys.exit(1)
+    sys.exit(exit_code)
 
 
 try:
     from configparser import ConfigParser, NoSectionError, NoOptionError
 except ImportError:
     from ConfigParser import ConfigParser, NoSectionError, NoOptionError
-import json
-
 
 try:
     import urllib3
