@@ -28,6 +28,11 @@ try:
 except ImportError:
     exit_fail('Please install the python requests library, "apt-get install python-requests" on debian/ubuntu')
 
+try:
+    import argparse
+except ImportError:
+    exit_fail('Please install the argparse package, "apt-get install python-argparse" on debian/ubuntu')
+
 
 class Configuration(object):
 
@@ -121,14 +126,28 @@ class Inventory(object):
         except requests.exceptions.RequestException as e:
             print('Warning: Could not fetch satellite data\n{}'.format(str(e)), file=sys.stderr)
 
-    def json(self):
-        data = self.groups
-        data['_meta'] = {
-            'hostvars': self.hosts,
-        }
+    def json(self, host=None):
+        if host:
+            try:
+                data = self.hosts[host]
+            except KeyError:
+                data = {}
+        else:
+            data = self.groups
+            data['_meta'] = {
+                'hostvars': self.hosts,
+            }
         return json.dumps(data)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 2 and sys.argv[1] == '--list':
-        print(Inventory(Configuration()).json())
+    p = argparse.ArgumentParser(description='This script creates a dynamic inventory for ansible from openitcockpit')
+    p.add_argument('--list', action='store_true', default=False)
+    p.add_argument('--host', default=None)
+    args = p.parse_args()
+    inv = Inventory(Configuration())
+
+    if args.list:
+        print(inv.json())
+    elif args.host is not None:
+        print(inv.json(host=args.host))
