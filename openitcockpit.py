@@ -116,12 +116,16 @@ class Inventory(object):
                 try:
                     for sat_data in sat_request.json()['all_satelittes']:
                         sat = sat_data['Satellite']
-                        self.hosts[sat['name']] = {
+                        host_data = {
                             'address': sat['address'],
                             'ansible_host': sat['address'],
-                            'timezone': sat['timezone'],
                             'container': sat['container'],
                         }
+                        try:
+                            host_data['timezone'] = sat['timezone']
+                        except KeyError:
+                            host_data['timezone'] = None
+                        self.hosts[sat['name']] = host_data
                         self.groups['openitcockpit'].append(sat['name'])
                         self.groups['oitc-satellite'].append(sat['name'])
                 except Exception as e:
