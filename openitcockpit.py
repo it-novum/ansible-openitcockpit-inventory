@@ -115,7 +115,7 @@ class Inventory(object):
             if sat_request.status_code == 200:
                 self.groups['oitc-satellite'] = []
                 try:
-                    for sat_data in sat_request.json()['all_satelittes']:
+                    for sat_data in sat_request.json()['satellites']:
                         sat = sat_data['Satellite']
                         host_data = {
                             'address': sat['address'],
