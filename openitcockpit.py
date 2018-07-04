@@ -48,7 +48,7 @@ class Configuration(object):
         read = cfg.read(['/etc/ansible/openitcockpit.ini',
                          os.path.expanduser('~/.ansible/openitcockpit.ini'),
                          'openitcockpit.ini',
-                         os.path.dirname(os.path.realpath(__file__)) + '/openitcockpit.ini' ])
+                         os.path.join(os.path.dirname(os.path.realpath(__file__)), 'openitcockpit.ini')])
         if len(read) < 1:
             exit_fail('Could not find any configuration file')
         self.url = cfg.get('openitcockpit', 'url')
