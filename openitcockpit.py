@@ -20,7 +20,7 @@ except ImportError:
 try:
     import requests
 except ImportError:
-    exit_fail('Please install the python requests library, "apt-get install python-requests" on debian/ubuntu')
+    exit_fail('Please install the python requests library, "apt-get install python3-requests" on debian/ubuntu')
 
 try:
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -39,7 +39,6 @@ class Configuration(object):
     def __init__(self):
         cfg = ConfigParser({
             'url': 'https://127.0.0.1',
-            'ldap': 'False',
             'master_hostname': 'localhost',
             'master_address': '127.0.0.1',
             'validate_certs': 'False',
@@ -52,30 +51,14 @@ class Configuration(object):
         if len(read) < 1:
             exit_fail('Could not find any configuration file')
         self.url = cfg.get('openitcockpit', 'url')
-        self.ldap = cfg.getboolean('openitcockpit', 'ldap')
         self.master_hostname = cfg.get('openitcockpit', 'master_hostname')
         self.master_address = cfg.get('openitcockpit', 'master_address')
         self.validate_certs = cfg.getboolean('openitcockpit', 'validate_certs')
 
         try:
-            self.username = cfg.get('openitcockpit', 'username')
-            self.password = cfg.get('openitcockpit', 'password')
+            self.apikey = cfg.get('openitcockpit', 'apikey')
         except (NoSectionError, NoOptionError):
-            exit_fail("Please specify username and password in the configuration file")
-
-    def get_auth_data(self):
-        if self.ldap:
-            return {
-                'data[LoginUser][auth_method]': 'ldap',
-                'data[LoginUser][samaccountname]': self.username,
-                'data[LoginUser][password]': self.password,
-            }
-        else:
-            return {
-                'data[LoginUser][auth_method]': 'session',
-                'data[LoginUser][email]': self.username,
-                'data[LoginUser][password]': self.password,
-            }
+            exit_fail("Please specify apikey in the configuration file")
 
 
 class Inventory(object):
@@ -98,39 +81,29 @@ class Inventory(object):
         if master_address == '127.0.0.1':
             self.hosts[self.config.master_hostname]['ansible_connection'] = 'local'
         self.groups['openitcockpit'] = [self.config.master_hostname]
-        self.groups['oitc-master'] = [self.config.master_hostname]
+        self.groups['openitcockpit_main'] = [self.config.master_hostname]
 
         try:
-            login_request = requests.post(self.config.url + '/login/login.json', 
-                                        self.config.get_auth_data(),
-                                        verify=self.config.validate_certs)
-
-            if login_request.status_code != 200 or login_request.json()['message'] != 'Login successful':
-                exit_fail('Login failed')
-
-            sat_request = requests.get(self.config.url + '/distribute_module/satellites.json',
-                                       cookies=login_request.cookies,
-                                       verify=self.config.validate_certs)
+            sat_request = requests.get(self.config.url + '/distribute_module/satellites/index.json',
+                                       verify=self.config.validate_certs,
+                                       params={'angular': 'true'},
+                                       headers={'Authorization': 'X-OITC-API {}'.format(self.config.apikey)})
 
             if sat_request.status_code == 200:
-                self.groups['oitc-satellite'] = []
+                self.groups['openitcockpit_satellite'] = []
                 try:
-                    for sat_data in sat_request.json()['satellites']:
-                        sat = sat_data['Satellite']
-                        host_data = {
-                            'address': sat['address'],
-                            'ansible_host': sat['address'],
-                            'container': sat['container'],
-                        }
+                    for sat in sat_request.json()['all_satellites']:
+                        sat['ansible_host'] = sat['address'],
                         try:
-                            host_data['timezone'] = sat['timezone']
+                            sat['timezone']
                         except KeyError:
-                            host_data['timezone'] = None
-                        self.hosts[sat['name']] = host_data
+                            sat['timezone'] = None
+                        self.hosts[sat['name']] = sat
                         self.groups['openitcockpit'].append(sat['name'])
-                        self.groups['oitc-satellite'].append(sat['name'])
+                        self.groups['openitcockpit_satellite'].append(sat['name'])
                 except Exception as e:
                     print('Warning: There was an error parsing the output of the openitcockpit api\n{}'.format(str(e)))
+                    raise
             else:
                 print('Warning: API did not return HTTP 200. Please check the openitcockpit server.')
 

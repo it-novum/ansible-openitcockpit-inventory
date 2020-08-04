@@ -9,9 +9,7 @@ You can place the configuration under /etc/ansible/openitcockpit.ini, ~/.ansible
 ```
 [openitcockpit]
 url = https://127.0.0.1
-username = you@example.com
-password = somesecret
-ldap = False
+apikey = HEREAPIKEYFROMPROFILE
 master_hostname = localhost
 master_address = 127.0.0.1
 validate_certs = False
