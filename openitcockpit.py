@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -93,7 +93,7 @@ class Inventory(object):
                 self.groups['openitcockpit_satellite'] = []
                 try:
                     for sat in sat_request.json()['all_satellites']:
-                        sat['ansible_host'] = sat['address'],
+                        sat['ansible_host'] = sat['address']
                         try:
                             sat['timezone']
                         except KeyError:
@@ -105,7 +105,7 @@ class Inventory(object):
                     print('Warning: There was an error parsing the output of the openitcockpit api\n{}'.format(str(e)))
                     raise
             else:
-                print('Warning: API did not return HTTP 200. Please check the openitcockpit server.')
+                print('Warning: API returned HTTP {}. Please check the openitcockpit server or credentials.'.format(sat_request.status_code))
 
         except requests.exceptions.RequestException as e:
             print('Warning: Could not fetch satellite data\n{}'.format(str(e)), file=sys.stderr)
